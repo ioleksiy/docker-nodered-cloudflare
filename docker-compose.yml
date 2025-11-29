@@ -32,3 +32,4 @@ volumes:
 networks:
   internal_network:
     driver: overlay
+    attachable: true
