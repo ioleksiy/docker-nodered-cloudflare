@@ -1,0 +1,33 @@
+services:
+  nodered:
+    image: nodered/node-red:latest
+    container_name: ${STACK_NAME:-nodered}_nodered
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+    volumes:
+      - ${STACK_NAME:-nodered}_data:/data
+    networks:
+      - ${STACK_NAME:-nodered}_network
+    # No ports exposed to host - access only through Cloudflare Tunnel
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: ${STACK_NAME:-nodered}_cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    networks:
+      - ${STACK_NAME:-nodered}_network
+    depends_on:
+      - nodered
+
+volumes:
+  ${STACK_NAME:-nodered}_data:
+    driver: local
+
+networks:
+  ${STACK_NAME:-nodered}_network:
+    driver: bridge
+    internal: false  # Set to true for complete isolation, false to allow outbound internet access

@@ -1,0 +1,16 @@
+# Environment variables with secrets
+.env
+
+# Docker volumes (local development)
+volumes/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
