@@ -14,7 +14,8 @@ Docker Compose project that deploys Node-RED behind a Cloudflare Tunnel for secu
 
 1. A Cloudflare account with a domain
 2. Cloudflare Zero Trust account (free tier available)
-3. Docker and Docker Compose installed
+3. Docker Swarm initialized (Portainer handles this automatically)
+4. Portainer installed
 
 ## Setup Instructions
 
@@ -34,16 +35,17 @@ Docker Compose project that deploys Node-RED behind a Cloudflare Tunnel for secu
 ### 2. Deploy with Portainer
 
 1. In Portainer, go to **Stacks** > **Add stack**
-2. Give your stack a **unique name** (e.g., `nodered-production`, `nodered-dev`, `norede-test`)
+2. Give your stack a **unique name** (e.g., `nodered-production`, `nodered-dev`, `nodered-test`)
    - This stack name will automatically prefix all volumes and networks
 3. Choose **Git Repository**
-4. Enter your repository URL: `https://github.com/yourusername/docker-nodered-cloudflare`
+4. Enter your repository URL: `https://github.com/ioleksiy/docker-nodered-cloudflare`
 5. In the **Environment variables** section, add:
    ```
-   STACK_NAME=nodered_production
    TUNNEL_TOKEN=your_actual_tunnel_token_here
    ```
 6. Click **Deploy the stack**
+
+**Note**: Portainer deploys stacks using Docker Swarm mode, which provides automatic service discovery and load balancing.
 
 ### Multiple Stack Deployments
 
@@ -51,27 +53,23 @@ To deploy multiple instances from this repository:
 
 1. Each Portainer stack **must** have a unique name
 2. Each stack needs its own Cloudflare Tunnel token
-3. The `STACK_NAME` environment variable is used only for container naming
-4. Examples:
+3. Examples:
    ```
    Stack Name: nodered-production
-   STACK_NAME=nodered_production
    TUNNEL_TOKEN=token_for_prod
    
    Stack Name: nodered-development
-   STACK_NAME=nodered_development
    TUNNEL_TOKEN=token_for_dev
    
    Stack Name: nodered-testing
-   STACK_NAME=nodered_testing
    TUNNEL_TOKEN=token_for_test
    ```
 
 Portainer automatically ensures each deployment has:
 - Separate persistent volumes (prefixed with stack name: `nodered-production_nodered_data`, etc.)
-- Unique container names (using `STACK_NAME` variable)
-- Isolated networks (prefixed with stack name: `nodered-production_internal_network`, etc.)
-- Independent data storage
+- Isolated overlay networks (prefixed with stack name: `nodered-production_internal_network`, etc.)
+- Independent service instances
+- Complete isolation between deployments
 
 ### 3. Access Node-RED
 
@@ -84,9 +82,6 @@ Once deployed, access Node-RED through your Cloudflare Tunnel URL:
 
 Set these in the Portainer stack interface:
 
-- `STACK_NAME` (required): Unique identifier for container naming (e.g., `nodered_production`, `nodered_dev`)
-  - Used to make container names unique across deployments
-  - If not set, defaults to `nodered`
 - `TUNNEL_TOKEN` (required): Your Cloudflare Tunnel token
 
 Note: Volumes and networks are automatically prefixed by Portainer using the stack name you provide in the UI.
@@ -102,30 +97,38 @@ This data persists even when containers are updated or reset.
 
 ### Network Security
 
-Each stack creates its own isolated network (automatically prefixed by Portainer) configured with:
+Each stack creates its own isolated overlay network (automatically prefixed by Portainer) configured with:
 - No ports exposed to the host
-- Internal communication between containers within the same stack
+- Internal communication between services within the same stack
 - Outbound internet access allowed (for Node-RED to install packages, etc.)
 - Complete isolation between different stack deployments
+- Swarm-scoped networking for service discovery
 
 To completely isolate the network (no internet access), set `internal: true` in the docker-compose.yml network configuration.
 
 ## Useful Commands
 
-### View logs
+### View logs (Docker Swarm)
 ```bash
-docker-compose logs -f
+# List services
+docker service ls
+
+# View service logs
+docker service logs <stack_name>_nodered
+docker service logs <stack_name>_cloudflared
 ```
 
-### Restart services
+### Scale services
 ```bash
-docker-compose restart
+# Scale Node-RED (usually keep at 1 for stateful apps)
+docker service scale <stack_name>_nodered=1
 ```
 
-### Update containers
+### Update services
 ```bash
-docker-compose pull
-docker-compose up -d
+# Update to latest images
+docker service update --image nodered/node-red:latest <stack_name>_nodered
+docker service update --image cloudflare/cloudflared:latest <stack_name>_cloudflared
 ```
 
 ### Backup Node-RED data
@@ -142,19 +145,22 @@ docker run --rm -v nodered-production_nodered_data:/data -v $(pwd):/backup alpin
 
 ## Troubleshooting
 
-### Container won't start
-- Check logs: `docker-compose logs cloudflared`
+### Service won't start
+- Check logs: `docker service logs <stack_name>_cloudflared`
 - Verify TUNNEL_TOKEN is correctly set
 - Ensure Cloudflare Tunnel is active in the dashboard
+- Check service status: `docker service ps <stack_name>_nodered`
 
 ### Can't access Node-RED
-- Verify the tunnel is running: `docker-compose ps`
+- Verify the services are running: `docker service ls`
 - Check Cloudflare Tunnel status in the Zero Trust dashboard
 - Ensure public hostname is correctly configured to point to `nodered:1880`
+- Check service tasks: `docker service ps <stack_name>_cloudflared`
 
 ### Node-RED flows not persisting
 - Check volume exists: `docker volume ls | grep <your_portainer_stack_name>`
-- Verify volume mount: `docker-compose config`
+- Verify volume is mounted: Check in Portainer UI under the stack's volumes tab
+- Volumes in Docker Swarm persist across service updates
 
 ### Managing Multiple Deployments
 - List all volumes: `docker volume ls`
