@@ -10,7 +10,7 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: unless-stopped
+        condition: any
     # No ports exposed to host - access only through Cloudflare Tunnel
 
   cloudflared:
@@ -23,7 +23,7 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: unless-stopped
+        condition: any
 
 volumes:
   nodered_data:
