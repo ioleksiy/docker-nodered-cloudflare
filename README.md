@@ -34,41 +34,43 @@ Docker Compose project that deploys Node-RED behind a Cloudflare Tunnel for secu
 ### 2. Deploy with Portainer
 
 1. In Portainer, go to **Stacks** > **Add stack**
-2. Choose **Git Repository**
-3. Enter your repository URL: `https://github.com/yourusername/docker-nodered-cloudflare`
-4. In the **Environment variables** section, add:
+2. Give your stack a **unique name** (e.g., `nodered-production`, `nodered-dev`, `norede-test`)
+   - This stack name will automatically prefix all volumes and networks
+3. Choose **Git Repository**
+4. Enter your repository URL: `https://github.com/yourusername/docker-nodered-cloudflare`
+5. In the **Environment variables** section, add:
    ```
    STACK_NAME=nodered_production
    TUNNEL_TOKEN=your_actual_tunnel_token_here
    ```
-   **Important**: Use a unique `STACK_NAME` for each stack deployment to avoid volume conflicts
-5. Click **Deploy the stack**
+6. Click **Deploy the stack**
 
 ### Multiple Stack Deployments
 
-If you need to deploy multiple instances from this repository:
+To deploy multiple instances from this repository:
 
-1. Each stack **must** have a unique `STACK_NAME` value
+1. Each Portainer stack **must** have a unique name
 2. Each stack needs its own Cloudflare Tunnel token
-3. Examples:
+3. The `STACK_NAME` environment variable is used only for container naming
+4. Examples:
    ```
-   Stack 1:
+   Stack Name: nodered-production
    STACK_NAME=nodered_production
    TUNNEL_TOKEN=token_for_prod
    
-   Stack 2:
+   Stack Name: nodered-development
    STACK_NAME=nodered_development
    TUNNEL_TOKEN=token_for_dev
    
-   Stack 3:
+   Stack Name: nodered-testing
    STACK_NAME=nodered_testing
    TUNNEL_TOKEN=token_for_test
    ```
 
-This ensures each deployment has:
-- Separate persistent volumes (`nodered_production_data`, `nodered_development_data`, etc.)
-- Unique container names (no conflicts)
-- Isolated networks (`nodered_production_network`, `nodered_development_network`, etc.)
+Portainer automatically ensures each deployment has:
+- Separate persistent volumes (prefixed with stack name: `nodered-production_nodered_data`, etc.)
+- Unique container names (using `STACK_NAME` variable)
+- Isolated networks (prefixed with stack name: `nodered-production_internal_network`, etc.)
 - Independent data storage
 
 ### 3. Access Node-RED
@@ -82,10 +84,12 @@ Once deployed, access Node-RED through your Cloudflare Tunnel URL:
 
 Set these in the Portainer stack interface:
 
-- `STACK_NAME` (recommended): Unique identifier for this stack deployment (e.g., `nodered_production`, `nodered_dev`)
+- `STACK_NAME` (required): Unique identifier for container naming (e.g., `nodered_production`, `nodered_dev`)
+  - Used to make container names unique across deployments
   - If not set, defaults to `nodered`
-  - **Required when deploying multiple stacks to avoid conflicts**
 - `TUNNEL_TOKEN` (required): Your Cloudflare Tunnel token
+
+Note: Volumes and networks are automatically prefixed by Portainer using the stack name you provide in the UI.
 
 ### Persistent Storage
 
@@ -98,7 +102,7 @@ This data persists even when containers are updated or reset.
 
 ### Network Security
 
-Each stack creates its own isolated network (`${STACK_NAME}_network`) configured with:
+Each stack creates its own isolated network (automatically prefixed by Portainer) configured with:
 - No ports exposed to the host
 - Internal communication between containers within the same stack
 - Outbound internet access allowed (for Node-RED to install packages, etc.)
@@ -126,14 +130,14 @@ docker-compose up -d
 
 ### Backup Node-RED data
 ```bash
-# Replace 'nodered_production' with your actual STACK_NAME
-docker run --rm -v nodered_production_data:/data -v $(pwd):/backup alpine tar czf /backup/nodered-backup.tar.gz -C /data .
+# Replace 'nodered-production' with your actual Portainer stack name
+docker run --rm -v nodered-production_nodered_data:/data -v $(pwd):/backup alpine tar czf /backup/nodered-backup.tar.gz -C /data .
 ```
 
 ### Restore Node-RED data
 ```bash
-# Replace 'nodered_production' with your actual STACK_NAME
-docker run --rm -v nodered_production_data:/data -v $(pwd):/backup alpine tar xzf /backup/nodered-backup.tar.gz -C /data
+# Replace 'nodered-production' with your actual Portainer stack name
+docker run --rm -v nodered-production_nodered_data:/data -v $(pwd):/backup alpine tar xzf /backup/nodered-backup.tar.gz -C /data
 ```
 
 ## Troubleshooting
@@ -149,15 +153,15 @@ docker run --rm -v nodered_production_data:/data -v $(pwd):/backup alpine tar xz
 - Ensure public hostname is correctly configured to point to `nodered:1880`
 
 ### Node-RED flows not persisting
-- Check volume exists: `docker volume ls | grep <your_stack_name>`
+- Check volume exists: `docker volume ls | grep <your_portainer_stack_name>`
 - Verify volume mount: `docker-compose config`
 
 ### Managing Multiple Deployments
 - List all volumes: `docker volume ls`
-- Each stack's volume will be named: `<STACK_NAME>_data`
-- To remove a specific deployment's data: `docker volume rm <STACK_NAME>_data`
+- Each stack's volume will be named: `<portainer_stack_name>_nodered_data`
+- To remove a specific deployment's data: `docker volume rm <portainer_stack_name>_nodered_data`
 - List all networks: `docker network ls`
-- Each stack's network will be named: `<STACK_NAME>_network`
+- Each stack's network will be named: `<portainer_stack_name>_internal_network`
 
 ## Security Notes
 

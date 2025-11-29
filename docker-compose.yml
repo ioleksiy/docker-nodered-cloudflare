@@ -6,9 +6,9 @@ services:
     environment:
       - TZ=UTC
     volumes:
-      - ${STACK_NAME:-nodered}_data:/data
+      - nodered_data:/data
     networks:
-      - ${STACK_NAME:-nodered}_network
+      - internal_network
     # No ports exposed to host - access only through Cloudflare Tunnel
 
   cloudflared:
@@ -19,15 +19,15 @@ services:
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     networks:
-      - ${STACK_NAME:-nodered}_network
+      - internal_network
     depends_on:
       - nodered
 
 volumes:
-  ${STACK_NAME:-nodered}_data:
+  nodered_data:
     driver: local
 
 networks:
-  ${STACK_NAME:-nodered}_network:
+  internal_network:
     driver: bridge
     internal: false  # Set to true for complete isolation, false to allow outbound internet access
