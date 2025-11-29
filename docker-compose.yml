@@ -3,6 +3,8 @@ services:
     image: nodered/node-red:latest
     environment:
       - TZ=UTC
+      - NODE_RED_ENABLE_SAFE_MODE=false
+      - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_CREDENTIAL_SECRET:-my-secret-key}
     volumes:
       - nodered_data:/data
     networks:

@@ -83,8 +83,88 @@ Once deployed, access Node-RED through your Cloudflare Tunnel URL:
 Set these in the Portainer stack interface:
 
 - `TUNNEL_TOKEN` (required): Your Cloudflare Tunnel token
+- `NODE_RED_CREDENTIAL_SECRET` (optional): Secret key for encrypting credentials in flows
+  - If not set, a default will be used
+  - Use a strong random string for production
 
 Note: Volumes and networks are automatically prefixed by Portainer using the stack name you provide in the UI.
+
+### Securing Node-RED with Password
+
+Node-RED doesn't use environment variables for user authentication. To add password protection:
+
+**Method 1: Using the Node-RED Admin Tool (Recommended)**
+
+1. After deploying, get shell access to the Node-RED container via Portainer:
+   - Go to **Containers** > find your Node-RED container > click **Console**
+   - Or use: `docker exec -it <container_name> /bin/sh`
+
+2. Generate a password hash:
+   ```bash
+   node-red admin hash-pw
+   ```
+   Enter your desired password when prompted and copy the generated hash.
+
+3. Edit the settings file in the container or on your host:
+   ```bash
+   vi /data/settings.js
+   ```
+
+4. Add the authentication configuration:
+   ```javascript
+   adminAuth: {
+       type: "credentials",
+       users: [{
+           username: "admin",
+           password: "$2b$08$YOUR_GENERATED_HASH",
+           permissions: "*"
+       }]
+   }
+   ```
+
+5. Restart the Node-RED service in Portainer
+
+**Method 2: Pre-configure Settings File**
+
+1. Before deploying, create a `settings.js` file with your configuration
+2. Use the example `settings.js` provided in this repository
+3. Generate password hash locally (requires Node.js):
+   ```bash
+   npx node-red admin hash-pw
+   ```
+4. Mount the settings file by adding to docker-compose.yml:
+   ```yaml
+   volumes:
+     - nodered_data:/data
+     - ./settings.js:/data/settings.js
+   ```
+
+See the included `settings.js` file for a complete example with comments.
+
+### Multiple Users
+
+You can configure multiple users with different permission levels:
+- `*` - Full access (admin)
+- `read` - Read-only access (viewer)
+
+Example:
+```javascript
+adminAuth: {
+    type: "credentials",
+    users: [
+        {
+            username: "admin",
+            password: "$2b$08$ADMIN_HASH",
+            permissions: "*"
+        },
+        {
+            username: "viewer",
+            password: "$2b$08$VIEWER_HASH",
+            permissions: "read"
+        }
+    ]
+}
+```
 
 ### Persistent Storage
 
