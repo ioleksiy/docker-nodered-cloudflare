@@ -1,7 +1,6 @@
 services:
   nodered:
     image: nodered/node-red:latest
-    restart: unless-stopped
     environment:
       - TZ=UTC
     volumes:
@@ -16,7 +15,6 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    restart: unless-stopped
     command: tunnel run
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
